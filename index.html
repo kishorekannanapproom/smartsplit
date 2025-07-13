@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SplitSmart</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>SplitSmart</h1>
+    <button id="toggle-theme">🌓</button>
+  </header>
+
+  <main>
+    <section>
+      <h2>Create Group</h2>
+      <input type="text" id="group-name" placeholder="Group name" />
+      <textarea id="participants" placeholder="Participants (comma-separated)"></textarea>
+      <button onclick="createGroup()">Create Group</button>
+    </section>
+
+    <section>
+      <h2>Add Expense</h2>
+      <select id="payer"></select>
+      <input type="number" id="amount" placeholder="Amount" />
+      <input type="text" id="desc" placeholder="Description" />
+      <select id="category">
+        <option>Food</option>
+        <option>Travel</option>
+        <option>Rent</option>
+        <option>Other</option>
+      </select>
+      <h3>Split Between</h3>
+      <div id="split-users"></div>
+      <button onclick="addExpense()">Add Expense</button>
+    </section>
+
+    <section>
+      <h2>Summary</h2>
+      <div id="expense-list"></div>
+      <div id="balance-summary"></div>
+    </section>
+
+    <button id="export-btn">Export to PDF</button>
+  </main>
+
+  <footer>
+    <p>Made with ❤️ using HTML, CSS, and JavaScript</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
