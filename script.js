@@ -87,7 +87,7 @@ function renderSummary() {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${exp.payer}</td>
-      <td>₹${exp.amount.toFixed(2)}</td>
+      <td>Rs. ${exp.amount.toFixed(2)}</td>
       <td>${exp.desc}</td>
       <td>${exp.category}</td>
       <td>${exp.splitWith.join(", ")}</td>
@@ -105,17 +105,52 @@ function renderSummary() {
   const balBody = balanceTable.querySelector("tbody");
   for (const m in balances) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td>${m}</td><td>₹${balances[m].toFixed(2)}</td>`;
+    row.innerHTML = `<td>${m}</td><td>Rs. ${balances[m].toFixed(2)}</td>`;
     balBody.appendChild(row);
   }
 
   balanceSummary.appendChild(balanceTable);
+
+  // --- Calculate who owes whom ---
+  const payments = [];
+  let debtors = [];
+  let creditors = [];
+
+  // Split into debtors and creditors
+  for (const [name, amount] of Object.entries(balances)) {
+    if (amount < -0.01) debtors.push({ name, amount: -amount });
+    if (amount > 0.01) creditors.push({ name, amount });
+  }
+
+  // Greedily settle debts
+  for (let debtor of debtors) {
+    for (let creditor of creditors) {
+      if (debtor.amount === 0) break;
+      if (creditor.amount === 0) continue;
+      const payment = Math.min(debtor.amount, creditor.amount);
+      if (payment > 0.01) {
+        payments.push(`${debtor.name} owes ${creditor.name} Rs. ${payment.toFixed(2)}`);
+        debtor.amount -= payment;
+        creditor.amount -= payment;
+      }
+    }
+  }
+
+  // Show settlements in summary
+  const paymentDiv = document.createElement("div");
+  paymentDiv.innerHTML = "<h3>Who Owes Whom?</h3><ul>" +
+    payments.map(text => `<li>${text}</li>`).join("") +
+    "</ul>";
+  balanceSummary.appendChild(paymentDiv);
+
+
+  
 }
 
 document.getElementById("export-btn").addEventListener("click", () => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.setFont("courier");
+  doc.setFont("helvetica");
   doc.setFontSize(12);
 
   doc.text(`Group: ${group.name}`, 10, 10);
@@ -123,7 +158,7 @@ document.getElementById("export-btn").addEventListener("click", () => {
 
   const expenseRows = group.expenses.map(exp => [
     exp.payer,
-    `₹${exp.amount.toFixed(2)}`,
+    `Rs. ${exp.amount.toFixed(2)}`,
     exp.desc,
     exp.category,
     exp.splitWith.join(", ")
@@ -133,9 +168,10 @@ document.getElementById("export-btn").addEventListener("click", () => {
     startY: 30,
     head: [["Payer", "Amount", "Description", "Category", "Split With"]],
     body: expenseRows,
-    styles: { font: "courier", fontSize: 11 }
+    styles: { font: "helvetica", fontSize: 11 }
   });
 
+  // Calculate balances
   const balances = {};
   group.members.forEach(m => balances[m] = 0);
   group.expenses.forEach(exp => {
@@ -144,13 +180,49 @@ document.getElementById("export-btn").addEventListener("click", () => {
     balances[exp.payer] += exp.amount;
   });
 
-  const balanceRows = Object.entries(balances).map(([name, amount]) => [name, `₹${amount.toFixed(2)}`]);
+  // Show balance summary
+  const balanceRows = Object.entries(balances).map(([name, amount]) => [name, `Rs. ${amount.toFixed(2)}`]);
   doc.autoTable({
     startY: doc.lastAutoTable.finalY + 10,
     head: [["Member", "Balance"]],
     body: balanceRows,
-    styles: { font: "courier", fontSize: 11 }
+    styles: { font: "helvetica", fontSize: 11 }
   });
+
+  // Calculate "Who Owes Whom"
+  const payments = [];
+  let debtors = [];
+  let creditors = [];
+
+  for (const [name, amount] of Object.entries(balances)) {
+    if (amount < -0.01) debtors.push({ name, amount: -amount });
+    else if (amount > 0.01) creditors.push({ name, amount });
+  }
+
+  for (let debtor of debtors) {
+    for (let creditor of creditors) {
+      if (debtor.amount === 0) break;
+      if (creditor.amount === 0) continue;
+      const payment = Math.min(debtor.amount, creditor.amount);
+      if (payment > 0.01) {
+        payments.push([debtor.name, creditor.name, `Rs. ${payment.toFixed(2)}`]);
+        debtor.amount -= payment;
+        creditor.amount -= payment;
+      }
+    }
+  }
+
+
+  if (payments.length > 0) {
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [["Debtor", "Creditor", "Amount Owed"]],
+      body: payments,
+      styles: { font: "helvetica", fontSize: 11 }
+    });
+  } else {
+    doc.text("Everyone is settled up!", 10, doc.lastAutoTable.finalY + 20);
+  }
 
   doc.save(`${group.name}_summary.pdf`);
 });
